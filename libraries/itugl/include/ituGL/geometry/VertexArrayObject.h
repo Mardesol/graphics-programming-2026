@@ -4,7 +4,7 @@
 
 class VertexAttribute;
 
-// Vertex Array Object (VAO) is an OpenGL Object that stores all of the state needed to supply vertex dataç
+// Vertex Array Object (VAO) is an OpenGL Object that stores all of the state needed to supply vertex dataï¿½
 // Data is provided as a set of VertexAttributes
 class VertexArrayObject : public Object
 {
