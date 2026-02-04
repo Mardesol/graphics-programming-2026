@@ -4,6 +4,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <vector>
+
 
 // Helper structures. Declared here only for this exercise
 struct Vector2
@@ -43,19 +45,48 @@ void TerrainApplication::Initialize()
     BuildShaders();
 
     // (todo) 01.1: Create containers for the vertex position
-
+    std::vector<Vector3> container; 
 
     // (todo) 01.1: Fill in vertex data
+    for (int y = 0; y <= m_gridY; y++)
+    {
+        for (int x = 0; x <= m_gridX; x++)
+        {
+            Vector3 bottom_left  = Vector3(x, y, 0);
+            Vector3 top_left     = Vector3(x, y + 1, 0);
+            Vector3 top_right    = Vector3(x + 1, y + 1, 0);
+            Vector3 bottom_right = Vector3(x + 1, y, 0);
 
+            container.push_back(bottom_left);
+            container.push_back(top_left);
+            container.push_back(top_right);
+            container.push_back(bottom_left);
+            container.push_back(top_right);
+            container.push_back(bottom_right);
+        }
+    }
+    
 
     // (todo) 01.1: Initialize VAO, and VBO
+    VertexArrayObject vao;
+    VertexBufferObject vbo;
+    
+    vao.Bind();
+    vbo.Bind();
+
+    vbo.AllocateData<Vector3>(container);
+
+    VertexAttribute position(Data::Type::Float, 3);
+    vao.SetAttribute(0, position, 0, 0);
 
 
     // (todo) 01.5: Initialize EBO
 
 
     // (todo) 01.1: Unbind VAO, and VBO
-
+    vao.Unbind();
+    vbo.Unbind();
+    
 
     // (todo) 01.5: Unbind EBO
 
@@ -79,6 +110,9 @@ void TerrainApplication::Render()
     glUseProgram(m_shaderProgram);
 
     // (todo) 01.1: Draw the grid
+    vao.Bind();
+    int count = (m_gridY + 1) * (m_gridX + 1); 
+    glDrawArrays(GL_TRIANGLES, 0, count);
 
 }
 
