@@ -1,8 +1,7 @@
+set(libraries itugl glad glfw assimp imgui ${APPLE_LIBRARIES})
 
-set(libraries glad glfw assimp imgui itugl ${APPLE_LIBRARIES})
-
-file(GLOB_RECURSE target_inc "*.h" )
-file(GLOB_RECURSE target_src "*.cpp" )
+file(GLOB target_inc "*.h")
+file(GLOB target_src "*.cpp")
 
 file(GLOB_RECURSE shaders "*.vert" "*.frag" "*.geom" "*.glsl")
 source_group("Shaders" FILES ${shaders})

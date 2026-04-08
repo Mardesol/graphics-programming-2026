@@ -2,6 +2,8 @@
 
 #include <cassert>
 #include <stb_image.h>
+#include <vector>
+#include <cmath>
 
 TextureCubemapLoader::TextureCubemapLoader()
     : m_flipVertical(false)
