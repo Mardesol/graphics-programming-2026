@@ -31,7 +31,12 @@ PostFXSceneViewerApplication::PostFXSceneViewerApplication()
     , m_sceneFramebuffer(std::make_shared<FramebufferObject>())
     , m_exposure(1.0f)
     // (todo) 09.X: Set default value of configuration properties
-
+	, m_contrast(1.0f)
+	, m_hueShift(0.0f)
+    , m_saturation(1.0f)
+	, m_colorFilter(1.0f)
+    , m_bloomRange(1.0f, 2.0f)
+    , m_bloomIntensity(1.0f)
 {
 }
 
@@ -258,7 +263,7 @@ void PostFXSceneViewerApplication::InitializeFramebuffers()
     // Scene Texture
     m_sceneTexture = std::make_shared<Texture2DObject>();
     m_sceneTexture->Bind();
-    m_sceneTexture->SetImage(0, width, height, TextureObject::FormatRGBA, TextureObject::InternalFormat::InternalFormatSRGBA8);
+    m_sceneTexture->SetImage(0, width, height, TextureObject::FormatRGBA, TextureObject::InternalFormat::InternalFormatRGBA16F);
     m_sceneTexture->SetParameter(TextureObject::ParameterEnum::MinFilter, GL_LINEAR);
     m_sceneTexture->SetParameter(TextureObject::ParameterEnum::MagFilter, GL_LINEAR);
     Texture2DObject::Unbind();
@@ -271,7 +276,31 @@ void PostFXSceneViewerApplication::InitializeFramebuffers()
     FramebufferObject::Unbind();
 
     // (todo) 09.3: Add temp textures and frame buffers
+	m_tempTextures[0] = std::make_shared<Texture2DObject>();
+	m_tempTextures[0]->Bind();
+	m_tempTextures[0]->SetImage(0, width, height, TextureObject::FormatRGBA, TextureObject::InternalFormat::InternalFormatRGBA16F);
+	m_tempTextures[0]->SetParameter(TextureObject::ParameterEnum::MinFilter, GL_LINEAR);
+	m_tempTextures[0]->SetParameter(TextureObject::ParameterEnum::MagFilter, GL_LINEAR);
+	Texture2DObject::Unbind();
 
+	m_tempTextures[1] = std::make_shared<Texture2DObject>();
+	m_tempTextures[1]->Bind();
+	m_tempTextures[1]->SetImage(0, width, height, TextureObject::FormatRGBA, TextureObject::InternalFormat::InternalFormatRGBA16F);
+	m_tempTextures[1]->SetParameter(TextureObject::ParameterEnum::MinFilter, GL_LINEAR);
+	m_tempTextures[1]->SetParameter(TextureObject::ParameterEnum::MagFilter, GL_LINEAR);
+	Texture2DObject::Unbind();
+
+	m_tempFramebuffers[0] = std::make_shared<FramebufferObject>();
+    m_tempFramebuffers[0]->Bind();
+    m_tempFramebuffers[0]->SetTexture(FramebufferObject::Target::Draw, FramebufferObject::Attachment::Color0, *m_tempTextures[0]);
+    m_tempFramebuffers[0]->SetDrawBuffers(std::array<FramebufferObject::Attachment, 1>({ FramebufferObject::Attachment::Color0 }));
+    FramebufferObject::Unbind();
+
+    m_tempFramebuffers[1] = std::make_shared<FramebufferObject>();
+    m_tempFramebuffers[1]->Bind();
+    m_tempFramebuffers[1]->SetTexture(FramebufferObject::Target::Draw, FramebufferObject::Attachment::Color0, *m_tempTextures[1]);
+    m_tempFramebuffers[1]->SetDrawBuffers(std::array<FramebufferObject::Attachment, 1>({ FramebufferObject::Attachment::Color0 }));
+    FramebufferObject::Unbind();
 }
 
 void PostFXSceneViewerApplication::InitializeRenderer()
@@ -304,27 +333,39 @@ void PostFXSceneViewerApplication::InitializeRenderer()
     m_renderer.AddRenderPass(std::make_unique<SkyboxRenderPass>(m_skyboxTexture));
 
     // (todo) 09.3: Create a copy pass from m_sceneTexture to the first temporary texture
-
+	/*auto copyMaterial = CreatePostFXMaterial("shaders/postfx/copy.frag", m_sceneTexture);
+	m_renderer.AddRenderPass(std::make_unique<PostFXRenderPass>(copyMaterial, m_tempFramebuffers[0]));*/
 
     // (todo) 09.4: Replace the copy pass with a new bloom pass
-
+	m_bloomMaterial = CreatePostFXMaterial("shaders/postfx/bloom.frag", m_sceneTexture);
+	m_renderer.AddRenderPass(std::make_unique<PostFXRenderPass>(m_bloomMaterial, m_tempFramebuffers[0]));
 
     // (todo) 09.3: Add blur passes
+	auto horizontalBlur = CreatePostFXMaterial("shaders/postfx/blur.frag", m_tempTextures[0]);
+	auto verticalBlur   = CreatePostFXMaterial("shaders/postfx/blur.frag", m_tempTextures[1]);
 
+    horizontalBlur->SetUniformValue("Scale", glm::vec2(1.0f/width, 0.0f));
+	verticalBlur  ->SetUniformValue("Scale", glm::vec2(0.0f, 1.0f/height));
+    
+	m_renderer.AddRenderPass(std::make_unique<PostFXRenderPass>(horizontalBlur, m_tempFramebuffers[1]));
+	m_renderer.AddRenderPass(std::make_unique<PostFXRenderPass>(verticalBlur, m_tempFramebuffers[0]));
 
     // Final pass
     // (todo) 09.1: Replace with a new m_composeMaterial, using a new shader
-    std::shared_ptr<Material> copyMaterial = CreatePostFXMaterial("shaders/postfx/copy.frag", m_sceneTexture);
-    m_renderer.AddRenderPass(std::make_unique<PostFXRenderPass>(copyMaterial, m_renderer.GetDefaultFramebuffer()));
+    m_composeMaterial = CreatePostFXMaterial("shaders/postfx/compose.frag", m_sceneTexture);
+    m_renderer.AddRenderPass(std::make_unique<PostFXRenderPass>(m_composeMaterial, m_renderer.GetDefaultFramebuffer()));
 
     // (todo) 09.1: Set exposure uniform default value
-
+    m_composeMaterial->SetUniformValue("Exposure", m_exposure);
 
     // (todo) 09.2: Set uniform default values
-
+	m_composeMaterial->SetUniformValue("Contrast", m_contrast);
+	m_composeMaterial->SetUniformValue("HueShift", m_hueShift);
+    m_composeMaterial->SetUniformValue("Saturation", m_saturation);
+    m_composeMaterial->SetUniformValue("ColorFilter", m_colorFilter);
 
     // (todo) 09.4: Set the bloom texture uniform
-
+	m_composeMaterial->SetUniformValue("BloomTexture", m_tempTextures[0]);
 
 }
 
@@ -390,6 +431,30 @@ void PostFXSceneViewerApplication::RenderGUI()
             if (ImGui::DragFloat("Exposure", &m_exposure, 0.01f, 0.01f, 5.0f))
             {
                 m_composeMaterial->SetUniformValue("Exposure", m_exposure);
+            }
+            if (ImGui::SliderFloat("Contrast", &m_contrast, 0.5f, 1.5f))
+            {
+                m_composeMaterial->SetUniformValue("Contrast", m_contrast);
+            }
+            if (ImGui::SliderFloat("Hue Shift", &m_hueShift, -0.5f, 0.5f))
+            {
+                m_composeMaterial->SetUniformValue("HueShift", m_hueShift);
+            }
+            if (ImGui::SliderFloat("Saturation", &m_saturation, 0.0f, 2.0f))
+            {
+                m_composeMaterial->SetUniformValue("Saturation", m_saturation);
+            }
+            if (ImGui::ColorEdit3("Color Filter", &m_colorFilter.x))
+            {
+                m_composeMaterial->SetUniformValue("ColorFilter", m_colorFilter);
+            }
+            if (ImGui::DragFloat2("Bloom Range", &m_bloomRange.x, 0.1f, 0.0f, 5.0f))
+            {
+                m_bloomMaterial->SetUniformValue("Range", m_bloomRange);
+            }
+            if (ImGui::DragFloat("Bloom Intensity", &m_bloomIntensity, 0.1f, 0.0f, 5.0f))
+            {
+                m_bloomMaterial->SetUniformValue("Intensity", m_bloomIntensity);
             }
         }
     }

@@ -58,18 +58,24 @@ private:
     std::shared_ptr<Material> m_deferredMaterial;
     std::shared_ptr<Material> m_composeMaterial;
     // (todo) 09.4: Add a new material for bloom
+    std::shared_ptr<Material> m_bloomMaterial;
 
     // Framebuffers
     std::shared_ptr<FramebufferObject> m_sceneFramebuffer;
-    std::shared_ptr<Texture2DObject> m_depthTexture;
-    std::shared_ptr<Texture2DObject> m_sceneTexture;
-    // (todo) 09.3: Declare an array of 2 temporary framebuffers
-
-    // (todo) 09.3: Declare an array of 2 temporary textures
+    std::shared_ptr<Texture2DObject>   m_depthTexture;
+    std::shared_ptr<Texture2DObject>   m_sceneTexture;
+	std::shared_ptr<FramebufferObject> m_tempFramebuffers[2];   // (todo) 09.3: Declare an array of 2 temporary framebuffers
+	std::shared_ptr<Texture2DObject>   m_tempTextures[2];       // (todo) 09.3: Declare an array of 2 temporary textures
 
 
     // Configuration values
     float m_exposure;
     // (todo) 09.X: Declare new configuration values
+    float m_contrast;
+    float m_hueShift;
+    float m_saturation;
+    glm::vec3 m_colorFilter;
+    glm::vec2 m_bloomRange;
+    float m_bloomIntensity;
 
 };
